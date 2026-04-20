@@ -204,6 +204,18 @@ body {
 .weak-mode-activate-btn:active { opacity: 0.85; }
 .stats-link-btn { width: 100%; padding: 11px; background: transparent; color: #888; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; cursor: pointer; font-family: inherit; }
 
+/* ════ 速度調整 ════ */
+.speed-row { display: flex; align-items: center; gap: 8px; }
+.speed-row-label { font-size: 12px; color: #888; flex-shrink: 0; }
+.speed-btns { display: flex; gap: 4px; }
+.spd-btn { padding: 4px 12px; border-radius: 99px; border: 1px solid #ddd; background: transparent; font-size: 12px; cursor: pointer; font-family: inherit; color: #888; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.spd-btn.active { background: #185FA5; color: #fff; border-color: transparent; }
+
+/* ════ スワイプ ════ */
+.swipe-card { touch-action: pan-y; user-select: none; }
+.swipe-indicator { display: flex; justify-content: space-between; padding: 0 4px; }
+.swipe-hint-label { font-size: 11px; color: #bbb; display: flex; align-items: center; gap: 3px; }
+
 /* ════ 弱点モード表示 ════ */
 .range-card.weak-mode { border-color: #EF9F27; background: #FAEEDA; }
 .weak-mode-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #EF9F27; color: #412402; border-radius: 99px; font-size: 12px; font-weight: 500; }
@@ -302,7 +314,7 @@ body {
       <span class="counter" id="s1Counter">1 / 10</span>
     </div>
     <div class="prog-wrap"><div class="prog-fill" id="s1Prog" style="width:10%"></div></div>
-    <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:1.25rem;min-height:300px;justify-content:center;">
+    <div class="card swipe-card" id="s1Card" style="display:flex;flex-direction:column;align-items:center;gap:1.25rem;min-height:300px;justify-content:center;">
       <span class="step-badge">STEP 1</span>
       <div class="audio-overlay" id="s1Overlay" onclick="s1StartWithAudio()">
         <div class="audio-overlay-icon">🔊</div>
@@ -318,6 +330,10 @@ body {
         <span id="s1Label">再生ボタンを押してください</span>
       </div>
     </div>
+    <div class="swipe-indicator">
+      <span class="swipe-hint-label">← 前の単語</span>
+      <span class="swipe-hint-label">次の単語 →</span>
+    </div>
     <!-- 自動再生スイッチ -->
     <div class="auto-row">
       <div class="switch-wrap" onclick="toggleAutoPlay()">
@@ -328,8 +344,17 @@ body {
         <div class="auto-progress-fill" id="autoProgFill"></div>
       </div>
     </div>
+    <div class="speed-row">
+      <span class="speed-row-label">速度</span>
+      <div class="speed-btns">
+        <button class="spd-btn" onclick="setPlaySpeed(0.5)">0.5</button>
+        <button class="spd-btn" onclick="setPlaySpeed(0.75)">0.75</button>
+        <button class="spd-btn active" onclick="setPlaySpeed(1.0)">1.0</button>
+      </div>
+    </div>
     <div class="btn-row">
-      <button class="btn" onclick="s1Play()">▶ 再生</button>
+      <button class="btn" onclick="s1Play()">↺ もう一度</button>
+      <button class="btn" onclick="s1Prev()">← 前へ</button>
       <button class="btn primary" onclick="s1Next()">次へ →</button>
     </div>
   </div>
@@ -341,7 +366,7 @@ body {
       <span class="counter" id="s2Counter">1 / 10</span>
     </div>
     <div class="prog-wrap"><div class="prog-fill" id="s2Prog" style="width:10%"></div></div>
-    <div class="card" style="display:flex;flex-direction:column;gap:1.25rem;">
+    <div class="card swipe-card" id="s2Card" style="display:flex;flex-direction:column;gap:1.25rem;">
       <span class="step-badge">STEP 2</span>
       <div class="audio-overlay" id="s2Overlay" onclick="s2StartWithAudio()">
         <div class="audio-overlay-icon">🔊</div>
@@ -372,8 +397,21 @@ body {
         </div>
       </div>
     </div>
+    <div class="swipe-indicator">
+      <span class="swipe-hint-label">← 前の単語</span>
+      <span class="swipe-hint-label">次の単語 →</span>
+    </div>
+    <div class="speed-row">
+      <span class="speed-row-label">速度</span>
+      <div class="speed-btns">
+        <button class="spd-btn s2-spd" onclick="setPlaySpeed(0.5)">0.5</button>
+        <button class="spd-btn s2-spd" onclick="setPlaySpeed(0.75)">0.75</button>
+        <button class="spd-btn s2-spd active" onclick="setPlaySpeed(1.0)">1.0</button>
+      </div>
+    </div>
     <div class="btn-row">
       <button class="btn" onclick="s2Restart()">↺ もう一度</button>
+      <button class="btn" onclick="s2Prev()">← 前へ</button>
       <button class="btn primary" onclick="s2Next()">次へ →</button>
     </div>
   </div>
@@ -2222,7 +2260,7 @@ function s1Play() {
   function step1(cb) {
     if (s1Session !== session) return;
     s1SetStatus(true, '通常速度で読み上げ中');
-    speak(w.word, 1, guard(() => { const t = setTimeout(guard(cb), 300); sylTimers.push(t); }));
+    speak(w.word, playSpeed, guard(() => { const t = setTimeout(guard(cb), 300); sylTimers.push(t); }));
   }
   function step2(cb) {
     if (s1Session !== session) return;
@@ -2350,7 +2388,7 @@ function s2PlayEx() {
   stopSpeech();
   const text = s2Words[s2Idx].ex.replace(/\[|\]/g, '');
   s2SetStatus(true, '再生中...');
-  speak(text, 0.75, () => s2SetStatus(false, ''));
+  speak(text, playSpeed, () => s2SetStatus(false, ''));
 }
 function s2Restart() {
   document.getElementById('s2Mask').classList.remove('off');
@@ -2554,6 +2592,86 @@ function loadWeakModeSaved() {
 function activeWords() {
   return weakModeActive ? weakModeWords : rangeWords();
 }
+
+/* ════ 再生速度 ════ */
+let playSpeed = 1.0;
+
+function setPlaySpeed(val) {
+  playSpeed = val;
+  document.querySelectorAll('.spd-btn').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.textContent) === val);
+  });
+}
+
+/* ════ スワイプ操作（STEP１・STEP２） ════ */
+(function() {
+  const THRESHOLD = 45; // スワイプと判定する最小移動距離(px)
+
+  function setupSwipe(cardId, onNext, onPrev) {
+    const el = document.getElementById(cardId);
+    if (!el) return;
+    let startX = 0, startY = 0, dragging = false;
+
+    el.addEventListener('touchstart', function(e) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      dragging = true;
+    }, { passive: true });
+
+    el.addEventListener('touchend', function(e) {
+      if (!dragging) return;
+      dragging = false;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      // 縦スクロールと区別：横移動が縦移動より大きい場合のみスワイプ判定
+      if (Math.abs(dx) < THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) onNext(); else onPrev();
+    }, { passive: true });
+
+    // マウス操作（PC確認用）
+    el.addEventListener('mousedown', function(e) {
+      startX = e.clientX;
+      startY = e.clientY;
+      dragging = true;
+    });
+    el.addEventListener('mouseup', function(e) {
+      if (!dragging) return;
+      dragging = false;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.abs(dx) < THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) onNext(); else onPrev();
+    });
+    el.addEventListener('mouseleave', function() { dragging = false; });
+  }
+
+  // STEP１ 前の単語へ戻る
+  function s1Prev() {
+    if (s1Idx <= 0) return;
+    s1Session++; stopSpeech(); stopAutoTimer();
+    s1Idx--;
+    s1Render();
+    document.getElementById('s1Overlay').classList.add('hidden');
+    setTimeout(() => s1Play(), 300);
+  }
+
+  // STEP２ 前の単語へ戻る
+  function s2Prev() {
+    if (s2Idx <= 0) return;
+    stopSpeech();
+    s2Idx--;
+    s2Render();
+    document.getElementById('s2Overlay').classList.add('hidden');
+    setTimeout(s2PlayEx, 300);
+  }
+
+  // スワイプをセットアップ
+  setupSwipe('s1Card', function(){ s1Next(); }, function(){ s1Prev(); });
+  setupSwipe('s2Card', function(){ s2Next(); }, function(){ s2Prev(); });
+  // グローバルに公開（ボタンからも呼べるよう）
+  window.s1Prev = s1Prev;
+  window.s2Prev = s2Prev;
+})();
 
 /* 初期化 */
 loadRangeSaved();
